@@ -159,7 +159,7 @@ class NetlistStatement(object):
             match &= param_name_match
         elif p_val:
             param_value_match = False
-            for value in self.parameters.values():
+            for value in list(self.parameters.values()):
                 param_value_match |= self.compare(str(p_val), str(value), regex) 
             match &= param_value_match
         return match
@@ -356,7 +356,7 @@ class PySpectreScript(object):
             return tuple(os.listdir(self.path_to_results))
         else:
             if not fname in self.psf_results:
-                import psf
+                from . import psf
                 path = os.path.join(self.path_to_results, fname)
                 results = psf.PSFReader(path)
                 results.open()

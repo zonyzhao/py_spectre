@@ -37,12 +37,13 @@ import numpy
 from copy import copy
 
 from struct import unpack, pack
+from functools import reduce
 
 class PSFInvalid(Exception):
     pass
 
 def warning(str):
-    print "Warning: "+str
+    print("Warning: "+str)
 
 def indent(str, n=2):
     return "\n".join([' '*n+s for s in str.split("\n")])
@@ -198,7 +199,7 @@ class Struct(PSFData):
         return self.value[key]
 
     def getValue(self):
-        return dict([(k,v.getValue()) for k,v in self.value.items()])
+        return dict([(k,v.getValue()) for k,v in list(self.value.items())])
 
     def setValue(self, value):
         assert(value != None and len(value) == len(self.structdef.children))
@@ -221,7 +222,7 @@ class Struct(PSFData):
         return s
 
     def __repr__(self):
-        return "\n".join([indent(s) for s in map(repr,self.value.items())]) + "\n"
+        return "\n".join([indent(s) for s in map(repr,list(self.value.items()))]) + "\n"
 
 class Array(PSFData):
     def setValue(self, value):
@@ -769,7 +770,7 @@ class TraceSection(HashContainer):
         for index, chunk in enumerate(self.children):
             self.idMap[chunk.id] = chunk
             if isinstance(chunk, GroupDef):
-                self.nameIndex.update(dict([(par, (index,)+value) for par,value in chunk.getNameIndex().items()]))
+                self.nameIndex.update(dict([(par, (index,)+value) for par,value in list(chunk.getNameIndex().items())]))
             else:
                 self.nameIndex[chunk.name] = (index,)
 
@@ -848,7 +849,7 @@ class ValuesSectionSweep(SimpleContainer):
         Chunk.deSerializeFile(self, file)
         self.endpos = UInt32.fromFile(file).value
 
-        windowedsweep = self.psf.header.properties.has_key('PSF window size')
+        windowedsweep = 'PSF window size' in self.psf.header.properties
 
         if windowedsweep:
             el = ZeroPad(self.psf)
@@ -884,7 +885,7 @@ class ValuesSectionSweep(SimpleContainer):
         return len(self.psf.traces)
 
     def getValueByName(self, name):
-        windowedsweep = self.psf.header.properties.has_key('PSF window size')
+        windowedsweep = 'PSF window size' in self.psf.header.properties
 
         index = self.psf.traces.getTraceIndexByName(name)
 
@@ -1068,7 +1069,7 @@ class SweepValueWindowed(SweepValue):
         if n > windowlen:
             n = windowlen
 
-        for j in xrange(n):
+        for j in range(n):
             paramvalue = self.paramtype.getDataObj()
             paramvalue.deSerializeFile(file)
             if j < n:
@@ -1120,7 +1121,7 @@ class GroupData(PSFData):
                 # to skip window size - data size
                 file.seek(int(windowsize - count*element.getDataSize()), 1)
 
-                for i in xrange(0,count):
+                for i in range(0,count):
                     value = element.getDataObj()
                     value.deSerializeFile(file)
                     valuearray.append(value)
@@ -1472,7 +1473,7 @@ class PSFReader(object):
         file.seek(-4,2)
         datasize = UInt32.fromFile(file).value
         if self.verbose:
-            print "Total data size: ",datasize
+            print("Total data size: ",datasize)
 
         # Read Clarissa signature
         file.seek(-4-8,2)
@@ -1495,50 +1496,50 @@ class PSFReader(object):
             file.seek(pos)
 
         offsets = [sectionoffsets[secnum] for secnum in sectionnums]
-        sizes = map(operator.sub, offsets[1:]+[datasize], offsets)
-        sectionsizes = dict(zip(sectionnums, sizes))
+        sizes = list(map(operator.sub, offsets[1:]+[datasize], offsets))
+        sectionsizes = dict(list(zip(sectionnums, sizes)))
 
         if self.verbose:
-            print sectionoffsets, sectionsizes
+            print(sectionoffsets, sectionsizes)
         
         file.seek(0)
 
         self.unk1 = UInt32.fromFile(file)
         if self.verbose:
-            print "First word: 0x%x"%self.unk1
+            print("First word: 0x%x"%self.unk1)
 
         # Load headers
         file.seek(int(sectionoffsets[0]))
         self.header = HeaderSection(self)
         self.header.deSerializeFile(file)
         if self.verbose:
-            print "HEADER"
-            print self.header
+            print("HEADER")
+            print(self.header)
         
 
-        if sectionoffsets.has_key(1):
+        if 1 in sectionoffsets:
             file.seek(int(sectionoffsets[1]))
             self.types.deSerializeFile(file)
 
             if self.verbose:
-                print "TYPE"
-                print self.types
+                print("TYPE")
+                print(self.types)
 
-        if sectionoffsets.has_key(2):
+        if 2 in sectionoffsets:
             file.seek(int(sectionoffsets[2]))
             self.sweeps = SweepSection(self)
             self.sweeps.deSerializeFile(file)
 
             if self.verbose:
-                print "SWEEPS"
-                print self.sweeps
+                print("SWEEPS")
+                print(self.sweeps)
 
-        if sectionoffsets.has_key(3):
+        if 3 in sectionoffsets:
             file.seek(int(sectionoffsets[3]))
             self.traces = TraceSection(self)
             self.traces.deSerializeFile(file)
 
-        if sectionoffsets.has_key(4):
+        if 4 in sectionoffsets:
             file.seek(int(sectionoffsets[4]))
             # Load data
             if self.sweeps:
@@ -1548,18 +1549,18 @@ class PSFReader(object):
             self.values.deSerializeFile(file)
 
     def printme(self):
-        print "HEADER"
-        print self.header
-        print "TYPES"
-        print self.types
+        print("HEADER")
+        print(self.header)
+        print("TYPES")
+        print(self.types)
         if self.sweeps:
-            print "SWEEP"
-            print self.sweeps
+            print("SWEEP")
+            print(self.sweeps)
         if self.traces:
-            print "TRACE"
-            print self.traces
-        print "VALUES"
-        print self.values
+            print("TRACE")
+            print(self.traces)
+        print("VALUES")
+        print(self.values)
 
     def toPSFasc(self, prec=None):
         """Export to PSF ascii"""
